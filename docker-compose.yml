@@ -1,0 +1,122 @@
+version: "3.9"
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    mem_limit: 6000m  # 6GB for 10GB disk storage
+    environment:
+      - QDRANT__STORAGE__MEMORY_THRESHOLD=0.75
+      - QDRANT__STORAGE__HNSW__M=32  # Better index for large datasets
+      - QDRANT__STORAGE__HNSW__EF_CONSTRUCT=200
+      - QDRANT__STORAGE__WAL_CAPACITY_MB=128
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_THREAD=4  # Limit CPU usage
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    mem_limit: 3000m  # 3GB for Ollama
+
+  api:
+    build: .
+    depends_on:
+      - qdrant
+      - ollama
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: ["bash", "-lc", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+    mem_limit: 250m
+
+  ingest:
+    build: .
+    depends_on:
+      - qdrant
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: ["bash", "-lc", "python -m scripts.ingest_reddit"]
+    mem_limit: 250m
+
+  fetch-comments:
+    build: .
+    depends_on:
+      - qdrant
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: ["bash", "-lc", "python -m scripts.fetch_comments"]
+    mem_limit: 250m
+
+  indexer:
+    build: .
+    depends_on:
+      - qdrant
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: ["bash", "-lc", "python -m scripts.indexer --watch"]
+    mem_limit: 250m
+
+  # Parallel scraping services
+  parallel-discovery:
+    build: .
+    depends_on:
+      - qdrant
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: ["bash", "-lc", "python -m scripts.discovery"]
+    mem_limit: 250m
+    
+  parallel-ingest:
+    build: .
+    depends_on:
+      - qdrant
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: ["bash", "-lc", "python -m scripts.parallel_ingest"]
+    mem_limit: 250m  # Orchestrator only
+    
+  parallel-worker:
+    build: .
+    depends_on:
+      - qdrant
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: ["bash", "-lc", "python -m scripts.parallel_worker --single"]
+    mem_limit: 250m  # 250MB per worker limit
+    deploy:
+      replicas: 0  # Scale manually with docker compose up --scale
+
+volumes:
+  ollama:
+  job_queue:  # Persistent storage for job queue database
