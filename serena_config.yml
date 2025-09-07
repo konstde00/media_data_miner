@@ -1,0 +1,34 @@
+project:
+  name: "reddit-data-miner"
+  path: "."  # Use relative path for portability
+  description: "Reddit data mining and analysis project with semantic search capabilities"
+
+language_servers:
+  python:
+    enabled: true
+    command: ["pyright-langserver", "--stdio"]  # Use system PATH for portability
+    filetypes: ["*.py"]
+
+workspace:
+  root: "."  # Use relative path for portability
+  exclude_patterns:
+    - "**/.git/**"
+    - "**/__pycache__/**"
+    - "**/venv/**"
+    - "**/.venv/**"
+    - "**/.idea/**"
+    - "**/data/**"
+    - "**/.serena/cache/**"
+    - "**/.serena/logs/**"
+    - "**/*.db"
+    - "**/.DS_Store"
+  include_patterns:
+    - "**/*.py"
+    - "**/*.json"
+    - "**/*.md"
+    - "**/*.yml"
+    - "**/*.yaml"
+    - "**/requirements.txt"
+    - "**/Dockerfile"
+    - "**/Makefile"
+    - "**/.env.example"
