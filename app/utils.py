@@ -1,3 +1,4 @@
+import json
 import random
 import time
 import requests
@@ -102,28 +103,29 @@ class RequestHandler:
                 else:
                     time.sleep(SETTINGS.request_delay)
                 
-                # Add response size limit via stream
+                # Make request with automatic decompression
                 response = self.session.get(
                     url, 
                     headers=headers, 
                     proxies=proxies, 
                     params=params or {},
-                    timeout=30,
-                    stream=True
+                    timeout=30
                 )
                 
-                # Check content length before reading
+                # Check content length before processing
                 content_length = response.headers.get('Content-Length')
                 if content_length and int(content_length) > 50 * 1024 * 1024:  # 50MB limit
-                    response.close()
                     print(f"Response too large: {int(content_length) / 1024 / 1024:.1f} MB")
                     return None
                 
-                # Read the response content
-                response._content = response.raw.read(50 * 1024 * 1024)  # Max 50MB
-                
                 if response.status_code == 200:
-                    return response.json()
+                    try:
+                        return response.json()
+                    except ValueError as e:
+                        print(f"Failed to parse JSON response. Content type: {response.headers.get('Content-Type')}")
+                        print(f"Response content (first 300 chars): {response.text[:300]}")
+                        print(f"JSON parse error: {e}")
+                        return None
                 elif response.status_code == 429:
                     # Rate limited - honor Retry-After header if present
                     retry_after = response.headers.get('Retry-After')
@@ -210,14 +212,14 @@ def extract_post_fields(post_data: Dict[str, Any]) -> Dict[str, Any]:
         "hidden": safe_get(post_data, "hidden", False),
         "archived": safe_get(post_data, "archived", False),
         
-        # Media fields
-        "media": safe_get(post_data, "media"),
-        "media_embed": safe_get(post_data, "media_embed"),
-        "preview": safe_get(post_data, "preview"),
+        # Media fields (convert complex objects to JSON strings for Parquet compatibility)
+        "media": json.dumps(safe_get(post_data, "media")) if safe_get(post_data, "media") else None,
+        "media_embed": json.dumps(safe_get(post_data, "media_embed")) if safe_get(post_data, "media_embed") else None,
+        "preview": json.dumps(safe_get(post_data, "preview")) if safe_get(post_data, "preview") else None,
         
         # Metadata
         "distinguished": safe_get(post_data, "distinguished"),
-        "edited": safe_get(post_data, "edited", False),
+        "edited": bool(safe_get(post_data, "edited", False)) if not isinstance(safe_get(post_data, "edited", False), (int, float)) else True,
         "subreddit_name_prefixed": safe_get(post_data, "subreddit_name_prefixed"),
         "subreddit_type": safe_get(post_data, "subreddit_type"),
         "subreddit_id": safe_get(post_data, "subreddit_id"),
@@ -250,7 +252,7 @@ def extract_comment_fields(comment_data: Dict[str, Any]) -> Dict[str, Any]:
         "gilded": safe_get(comment_data, "gilded", 0),
         "total_awards_received": safe_get(comment_data, "total_awards_received", 0),
         "distinguished": safe_get(comment_data, "distinguished"),
-        "edited": safe_get(comment_data, "edited", False),
+        "edited": bool(safe_get(comment_data, "edited", False)) if not isinstance(safe_get(comment_data, "edited", False), (int, float)) else True,
         "stickied": safe_get(comment_data, "stickied", False),
         "is_submitter": safe_get(comment_data, "is_submitter", False),
         "score_hidden": safe_get(comment_data, "score_hidden", False),

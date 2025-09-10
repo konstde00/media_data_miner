@@ -11,11 +11,12 @@ def get_proxy_pool() -> List[str]:
     return os.getenv("PROXY_POOL", "").split(",") if os.getenv("PROXY_POOL") else []
 
 def get_user_agents() -> List[str]:
-    """Get default user agent strings"""
+    """Get realistic browser user agent strings"""
     return [
-        "RedditScraper/1.0 (by /u/micro-saas-miner)",
-        "Mozilla/5.0 (compatible; RedditDataMiner/1.0)",
-        "RedditBot/1.0 (+http://example.com/bot)"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+        "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     ]
 
 class Settings(BaseModel):
